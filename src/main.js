@@ -19,12 +19,17 @@ const hash=(s)=>{let h=7;for(const c of String(s))h=(h*31+c.charCodeAt(0))%10000
 const ERR=[];addEventListener('error',e=>ERR.push(String(e.message)));addEventListener('unhandledrejection',e=>ERR.push(String(e.reason&&e.reason.stack||e.reason)));
 
 // ---------- chapter state ----------
+const _q=new URLSearchParams(location.search);let TEST=_q.has('test')||_q.has('god');
+function testBadge(){let b=document.getElementById('testbadge');if(!b){b=document.createElement('div');b.id='testbadge';b.textContent='TEST MODE';b.style.cssText='position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:9999;background:#b00020;color:#fff;font:bold 11px sans-serif;padding:2px 8px;border-radius:4px;pointer-events:none;letter-spacing:1px';document.body.appendChild(b);}b.style.display=TEST?'block':'none';}
+function testFill(){if(!TEST||!P)return;P.hp=100;P.ammo=Math.max(P.ammo,99);P.shells=Math.max(P.shells,99);P.keys.add('_shotgun');}
+setTimeout(testBadge,0);
 let CH,P,ENEM=[],ITEMS=[],NPCS=[],PROJ=[],FX=[],camp,boss=null,mid=null;
 const scenePlayed=new Set();
 function newChapter(ci){
   CH=STORY.CH[ci];S.ch=ci;scenePlayed.clear();
   P={hp:100,ammo:12,shells:ci>=2?4:0,herbs:1,keys:new Set(),wpn:'pistol',scrap:0,pos:new V3(0,0,1.5),rot:Math.PI,vel:new V3(),cool:0,inv:0,slow:0,recoil:0,ph:0,kills:0,grab:0,aimT:0};
   if(ci>=2)P.keys.add('_shotgun');
+  testFill();
   // enemies per chapter (persist across rooms)
   ENEM=CH.enemyRooms.map((r,i)=>({room:r,type:CH.mix[i%CH.mix.length],role:CH.skins[i%CH.skins.length],seed:ci*37+i*11+3,dead:false,i}));
   ITEMS=CH.items.map((it,i)=>({...it,i,taken:false}));
@@ -154,7 +159,7 @@ function lerpAng(a,b,t){let d=((b-a+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-
 function liveTargets(){const a=live.filter(z=>z.hp>0);if(bossEnt&&bossEnt.hp>0&&!bossEnt.hidden)a.push(bossEnt);return a;}
 function fire(fwd,tgt){
   const sg=P.wpn==='shotgun';if(sg?P.shells<=0:P.ammo<=0){AU.sfx('click');P.cool=.35;U.toast(sg?'Out of shells.':'Out of ammo.',900);return;}
-  if(sg)P.shells--;else P.ammo--;P.cool=sg?.95:.38;P.recoil=1;P.aimT=1.2;
+  if(!TEST){if(sg)P.shells--;else P.ammo--;}P.cool=sg?.95:.38;P.recoil=1;P.aimT=1.2;
   AU.sfx(sg?'shotgun':'shot',P.pos);U.haptic(sg?35:18);muzzle.intensity=sg?14:9;muzzle.position.set(P.pos.x+fwd.x*.7,1.35,P.pos.z+fwd.z*.7);camShake=Math.max(camShake,sg?.6:.25);
   if(tgt){P.rot=Math.atan2(tgt.pos.x-P.pos.x,tgt.pos.z-P.pos.z);}
   const dir=tgt?tgt.pos.clone().sub(P.pos).setY(0).normalize():fwd;
@@ -184,7 +189,7 @@ function kill(z,dv){z.e.dead=true;z.state='dead';P.kills++;AU.sfx('splat',z.pos)
 function explode(p,r,dmg,col){AU.sfx('splat',p,1.4);AU.sfx('thud',p);phys.gore(p.clone().setY(1),new V3(),12,col);camShake=1;R.post.uniforms.flash.value=.25;
   if(P.pos.distanceTo(p)<r)hurt(dmg,p);for(const z of live)if(z.pos.distanceTo(p)<r&&z.hp>0)damage(z,3,z.pos.clone().sub(p).setY(0).normalize());
   for(const b of room.breakables)if(!b.broken&&Math.hypot(b.x-p.x,b.z-p.z)<r)breakProp(b,new V3(b.x-p.x,0,b.z-p.z).normalize());}
-function hurt(dmg,from){if(P.inv>0||S.cine)return;P.hp-=dmg;P.inv=.7;AU.sfx('hurt',P.pos);U.haptic([40,30,60]);R.post.uniforms.red.value=.6;camShake=Math.max(camShake,.7);
+function hurt(dmg,from){if(P.inv>0||S.cine)return;P.hp-=dmg;if(TEST)P.hp=100;P.inv=.7;AU.sfx('hurt',P.pos);U.haptic([40,30,60]);R.post.uniforms.red.value=.6;camShake=Math.max(camShake,.7);
   if(from){const k=P.pos.clone().sub(from).setY(0);if(k.lengthSq()>0){k.normalize();moveCircle(P.pos,k.x*.5,k.z*.5,.3);}}
   if(P.hp<=0)die();}
 function heal(){if(P.herbs<=0){U.toast('No herbs.',900);return;}if(P.hp>=100){U.toast('Condition: FINE.',900);return;}
@@ -391,7 +396,7 @@ async function chapterEnd(){S.state='end';S.busy=true;U.controls(false);U.prompt
   save.unlocked=Math.max(save.unlocked,S.ch+2);save.best[S.ch]=Math.max(save.best[S.ch]||0,P.kills);persist();await U.fade(0,10);S.busy=false;
   const next=S.ch<6?S.ch+1:S.ch===6&&save.unlocked>=8?7:-1;
   if(next>=0)startChapter(next);else credits();}
-async function die(){if(S.state!=='play')return;S.state='dead';U.controls(false);U.prompt(null);animate(hero,{state:'dead'},S.t);AU.setMode('silence');AU.sfx('thud');
+async function die(){if(S.state!=='play')return;if(TEST){testFill();return;}S.state='dead';U.controls(false);U.prompt(null);animate(hero,{state:'dead'},S.t);AU.setMode('silence');AU.sfx('thud');
   R.post.uniforms.red.value=.8;await U.wait(1400);const k=await U.menu('YOU DIED','THE QUIET TAKES ANOTHER',[['retry','RETRY CHAPTER'],['title','TITLE']]);R.post.uniforms.red.value=0;
   if(k==='retry')startChapter(S.ch);else title();}
 async function credits(){await U.typeCard(['THE LONG QUIET','Seven accounts. One road.','Thank you for listening.'],{head:'<h2>END</h2>'});title();}
@@ -404,9 +409,10 @@ async function title(){S.state='title';U.controls(false);newChapter(save.ch&&sav
   const k=await U.menu('THE LONG QUIET','A SURVIVAL HORROR IN SEVEN ACCOUNTS',items);AU.initAudio();S.titleCam=false;
   if(k==='new')startChapter(0);else if(k==='cont')startChapter(save.ch);else if(k==='chap'){const L=STORY.CH.map((c,i)=>[i,(i===7?'? ':(i+1)+' · ')+c.title]).filter(([i])=>i<save.unlocked||new URLSearchParams(location.search).has('all'));L.push(['back','BACK']);const c=await U.menu('CHAPTERS','',L);if(c==='back')title();else startChapter(+c);}
   else options(title);}
-async function options(back){const k=await U.menu('OPTIONS','',[['tier','QUALITY · '+G.tier.toUpperCase()],['snap','RETRO WOBBLE · '+(G.snapOn?'ON':'OFF')],['cam','CAMERA · '+(S.camMode==='fixed'?'CINEMATIC':'FOLLOW')],['snd','SOUND · '+(AU.A.on?'ON':'OFF')],['back','BACK']]);
+async function options(back){const k=await U.menu('OPTIONS','',[['tier','QUALITY · '+G.tier.toUpperCase()],['snap','RETRO WOBBLE · '+(G.snapOn?'ON':'OFF')],['cam','CAMERA · '+(S.camMode==='fixed'?'CINEMATIC':'FOLLOW')],['snd','SOUND · '+(AU.A.on?'ON':'OFF')],['test','TEST MODE · '+(TEST?'ON':'OFF')],['back','BACK']]);
   if(k==='tier'){const o=['low','med','high'];R.setTier(o[(o.indexOf(G.tier)+1)%3]);clearTex();if(S.state==='play'){loadRoom(S.ri);}return options(back);}
   if(k==='snap'){G.snapOn=!G.snapOn;return options(back);}if(k==='cam'){S.camMode=S.camMode==='fixed'?'follow':'fixed';return options(back);}
+  if(k==='test'){TEST=!TEST;testBadge();testFill();return options(back);}
   if(k==='snd'){AU.A.on=!AU.A.on;AU.setVol(AU.A.on?.8:0);return options(back);}back();}
 document.getElementById('bcam').onclick=()=>{S.camMode=S.camMode==='fixed'?'follow':'fixed';S.camIdx=-1;U.toast(S.camMode==='fixed'?'CINEMATIC CAMERA':'FOLLOW CAMERA',900);};
 document.getElementById('bmenu').onclick=async()=>{if(S.state!=='play'||S.busy)return;S.paused=true;U.controls(false);const k=await U.menu('PAUSED','',[['resume','RESUME'],['opt','OPTIONS'],['title','QUIT TO TITLE']]);
