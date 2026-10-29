@@ -1,0 +1,11 @@
+# THE LONG QUIET — Accounts from the Outbreak (original story bible, draft for Huy's review)
+Frame: years after a fast global outbreak, an interviewer, MINH TRAN, records survivors' accounts. Each chapter = one country, city and survivor, with a typewriter intro and outro.
+Memory flashes: warm sepia pre-outbreak memories that cut sharply to the cold present (built in Ch.1).
+
+1. HOLLOWMERE — Harlan Falls, USA. LINH TRAN, courier, Minh's older sister. Backstory: Mom's noodle stall; promise to Minh "I'll always come back"; regret: let Mom's last call ring. Mini-boss: the Swollen One (cellar boiler; phase 2 steam + charges). Seeds: letter to Minh, scratch from the boss, her truck route.
+2. SALT ROAD — Da Nang, Vietnam. HUONG, boat mechanic, gets her family off a pier before the harbor closes. Lost her husband at sea years ago. Boss: a net-tangled giant on the dock, tide timer. Seed: a radio voice ("Courier") reading safe routes in Linh's style.
+3. NINTH FLOOR — Lagos, Nigeria. ADAEZE, night nurse; promised her dying father she'd never leave a patient. Boss: the ward's former surgeon, generator-blackout phases. Seed: a patient wearing Linh's jacket.
+4. WHITE LINE — Altai, Kazakhstan. YERLAN, trucker escorting a convoy; regret over his estranged son. Boss: a frozen pack leader during a whiteout. Seed: Linh's truck found abandoned, its logbook still updating.
+5. SUB-LEVEL — Seoul, South Korea. JI-WOO, metro engineer; a happy memory of her daughter's first train ride. Boss: a blind tunnel-dweller you fight by sound. Seed: Courier broadcasts start to sound "wrong".
+6. QUARANTINE CHOIR — Lisbon, Portugal. TOMÁS, teen radio operator at a lighthouse who answers Courier's calls. Boss: a horde siege, defend the tower.
+FINALE: THE INTERVIEWER — Minh follows Courier's signal to the end of Linh's route. The voice was Linh, turned slowly from the Ch.1 scratch, still driving and still broadcasting from memory. Pre-fight cutscene: the truck's headlights. Mid-fight: her memories intercut with his (noodle stall, the promise). Finisher: Minh can't shoot; he plays her old voicemail and she pauses long enough. Bittersweet ending: he records her account as the final chapter. "She came back for me. She kept her promise."

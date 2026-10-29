@@ -1,0 +1,18 @@
+(window.CHAPTERS=window.CHAPTERS||[])[4]={id:5,title:'SUB-LEVEL',place:'Seoul, South Korea',who:'Park Ji-woo, metro engineer',
+ theme:{fog:'#0e1014',amb:'#8a90a8',ambI:.28,wall:'concrete',weather:'drip',lamp:'#a0c0ff'},mech:'sound',
+ memOpen:['Before: Soo-ah\'s first train','ride. Her face pressed','to the glass, shouting','"So fast, Umma!"','...','Down here the radio still','reached. Courier repeated:','"...always come back..."'],
+ intro:['"Two hundred commuters in','the dark. The tunnel dwellers','were blind. They hunted','by sound. Move slow."'],
+ outro:['"The flood gate opened.','We walked out into rain.','The radio crackled once:','\'Minh... wait for my truck.\'','Then only static."'],
+ rooms:[
+  {n:'PLATFORM 4',f:'concrete',d:{E:1,N:2},lamps:[[2,2],[7,2]],blk:[[3,4],[6,4]],safe:1},
+  {n:'TICKET HALL',f:'tile',d:{W:0},lamps:[[5,4]],blk:[[2,2],[3,2],[6,6],[7,6]]},
+  {n:'TUNNEL A',f:'concrete',d:{S:0,E:3,N:4},lamps:[[5,4]],blk:[[2,3],[2,5],[7,3],[7,5]]},
+  {n:'SIGNAL ROOM',f:'metal',d:{W:2},lamps:[[5,2]],blk:[[3,3],[6,3]]},
+  {n:'FLOOD GATE',f:'concrete',d:{S:2,N:'exit'},lamps:[[2,2],[7,2]],blk:[[4,5],[5,5]]}],
+ items:[{r:1,x:120,y:104,k:'card',name:'Keycard'},{r:3,x:120,y:104,k:'breaker',name:'Breaker Handle'},{r:1,x:24,y:104,k:'ammo',n:6},{r:3,x:24,y:24,k:'herb'},{r:2,x:120,y:104,k:'herb'},{r:0,x:120,y:104,k:'ammo',n:4},
+  {r:3,x:40,y:104,k:'letter',name:'Radio Tape',read:'Courier, looping: "...always come back... always... Minh, Minh, wait for my..." The voice drags.',mem:['Soo-ah\'s small hand','in mine on the escalator.','"Again, Umma! Again!"']}],
+ enemies:[[1,120,40],[1,40,56],[2,120,104],[2,40,40],[3,72,40],[4,40,104]],
+ tw:{r:0,x:104,y:24},exit:{r:4,x:80,y:12,needs:['card','breaker'],locked:'The gate needs a KEYCARD and a BREAKER HANDLE.',done:'The flood gate grinds open.'},
+ scares:[{r:1,after:'card',type:'window',x:136,y:40},{r:3,type:'calm',x:16,y:72}],
+ boss:{r:4,x:80,y:40,hp:18,name:'THE LISTENER',spr:'big',tint:'#c0b8d0',scale:1.2,mech:'scream',p2:'It screams. The others hear it!',
+  memP2:['The night shift I took','instead of her recital.','Her empty seat photo.'],memFin:['Soo-ah asleep on the','last train home,','head on my arm. Before.']}};
