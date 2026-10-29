@@ -121,7 +121,7 @@ function atlas(d){
   // hair fringe
   if(d.hair&&d.hair!=='bald'){g.fillStyle=d.hairCol;const fr=d.hair==='bangs'?h*.3:d.hair==='long'||d.hair==='bun'?h*.18:h*.14;
     g.fillRect(x,y,w,fr);g.fillRect(x,y,w*.1,h*.5);g.fillRect(x+w*.9,y,w*.1,h*.5);if(d.hair==='side'){g.fillRect(x,y,w*.6,h*.24);}}
-  const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;t.colorSpace=THREE.SRGBColorSpace;t.flipY=true;return t;
+  const t=new THREE.CanvasTexture(c);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.colorSpace=THREE.SRGBColorSpace;t.flipY=true;return t;
 }
 
 // ---- costume/extras library (original designs) ----

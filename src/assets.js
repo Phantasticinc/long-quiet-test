@@ -1,5 +1,5 @@
 // Loads Blender-refined assets (Draco GLB) and registers them for the runtime.
-import {THREE,G} from './gfx.js';
+import {THREE,G,smoothTex,smoothNormals} from './gfx.js';
 import {GLTFLoader} from '../lib/addons/GLTFLoader.js';
 import {DRACOLoader} from '../lib/addons/DRACOLoader.js';
 import {GLB,ART} from './chars.js';
@@ -12,7 +12,7 @@ let AM=null;
 export async function loadArt(keys){if(!AM){try{AM=await (await fetch('assets/art/chars.json')).json();}catch(e){AM={};}}
   const lod=G.tier==='low'?'med':'high';
   await Promise.all([...keys].filter(k=>k&&AM[k]&&!ART.has(k)).map(async k=>{try{const g=await gl.loadAsync(AM[k][lod]);let sm=null;g.scene.traverse(o=>{if(o.isSkinnedMesh&&!sm)sm=o;});
-    if(!sm)return;const map=sm.material.map;map.magFilter=map.minFilter=THREE.NearestFilter;map.generateMipmaps=false;map.colorSpace=THREE.SRGBColorSpace;
+    if(!sm)return;const map=smoothTex(sm.material.map);map.colorSpace=THREE.SRGBColorSpace;smoothNormals(sm.geometry);
     ART.set(k,{geo:sm.geometry,map,jn:sm.skeleton.bones.map(b=>b.name),joints:AM[k].joints});}catch(e){console.warn('art',k,e);}}));}
 export async function loadChars(keys){return 0;}
 async function _oldLoadChars(keys){const m=await manifest();if(!useBlender())return 0;const lod=G.tier==='high'?'high':'med';
@@ -24,7 +24,7 @@ async function _oldLoadChars(keys){const m=await manifest();if(!useBlender())ret
 export const PROPNAMES=['table','pillar','vase','chair','longtable','shelf','desk','piano','boiler','barrel','crate','fountain','garden_tree','hedge','bench','lamppost'];
 export async function loadProps(){const lod=G.tier==='low'?'med':'high';
   await Promise.all(PROPNAMES.filter(n=>!PROPS.has(n)).map(async n=>{try{const g=await gl.loadAsync('assets/props/'+n+'_'+lod+'.glb');let m=null;g.scene.traverse(o=>{if(o.isMesh&&!m)m=o;});
-    const map=m.material.map;if(map){map.magFilter=map.minFilter=THREE.NearestFilter;map.generateMipmaps=false;map.colorSpace=THREE.SRGBColorSpace;}
+    const map=m.material.map;if(map){smoothTex(map);map.colorSpace=THREE.SRGBColorSpace;}smoothNormals(m.geometry);
     m.geometry.computeBoundingBox();PROPS.set(n,{geo:m.geometry,map});}catch(e){console.warn('prop',n,e);}}));}
 async function _oldLoadProps(){const m=await manifest();if(!useBlender())return;await Promise.all((m.props||[]).filter(p=>!PROPS.has(p.name)).map(async p=>{try{const g=await gl.loadAsync('assets/props/'+p.file);PROPS.set(p.name,g.scene);}catch(e){console.warn('prop',p.file,e);}}));}
 const ALIAS={streetlamp:'lamppost',blossom_tree:'garden_tree'};

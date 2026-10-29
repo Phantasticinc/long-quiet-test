@@ -404,7 +404,7 @@ async function title(){S.state='title';U.controls(false);newChapter(save.ch&&sav
   const k=await U.menu('THE LONG QUIET','A SURVIVAL HORROR IN SEVEN ACCOUNTS',items);AU.initAudio();S.titleCam=false;
   if(k==='new')startChapter(0);else if(k==='cont')startChapter(save.ch);else if(k==='chap'){const L=STORY.CH.map((c,i)=>[i,(i===7?'? ':(i+1)+' · ')+c.title]).filter(([i])=>i<save.unlocked||new URLSearchParams(location.search).has('all'));L.push(['back','BACK']);const c=await U.menu('CHAPTERS','',L);if(c==='back')title();else startChapter(+c);}
   else options(title);}
-async function options(back){const k=await U.menu('OPTIONS','',[['tier','QUALITY · '+G.tier.toUpperCase()],['snap','VERTEX SNAP · '+(G.snapOn?'ON':'OFF')],['cam','CAMERA · '+(S.camMode==='fixed'?'CINEMATIC':'FOLLOW')],['snd','SOUND · '+(AU.A.on?'ON':'OFF')],['back','BACK']]);
+async function options(back){const k=await U.menu('OPTIONS','',[['tier','QUALITY · '+G.tier.toUpperCase()],['snap','RETRO WOBBLE · '+(G.snapOn?'ON':'OFF')],['cam','CAMERA · '+(S.camMode==='fixed'?'CINEMATIC':'FOLLOW')],['snd','SOUND · '+(AU.A.on?'ON':'OFF')],['back','BACK']]);
   if(k==='tier'){const o=['low','med','high'];R.setTier(o[(o.indexOf(G.tier)+1)%3]);clearTex();if(S.state==='play'){loadRoom(S.ri);}return options(back);}
   if(k==='snap'){G.snapOn=!G.snapOn;return options(back);}if(k==='cam'){S.camMode=S.camMode==='fixed'?'follow':'fixed';return options(back);}
   if(k==='snd'){AU.A.on=!AU.A.on;AU.setVol(AU.A.on?.8:0);return options(back);}back();}

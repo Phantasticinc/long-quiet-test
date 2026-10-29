@@ -1,14 +1,15 @@
-// Renderer: native low-res 32-bit pipeline. Low internal resolution, PS1-style vertex snap,
-// affine texture mapping, 15-bit color + ordered dither post pass, fog. Quality tiers.
+// Renderer: smooth pipeline at device pixel ratio (capped per tier) with MSAA render target,
+// linear/mipmapped/anisotropic textures, light post pass (vignette, effects). Adaptive render scale.
 import * as THREE from '../lib/three.module.min.js';
 export {THREE};
 
 export const TIERS={
-  low:{h:200,snap:1,affine:1,dither:1,shadows:0,lights:2,tex:128,debris:12,pr:1},
-  med:{h:260,snap:1,affine:1,dither:1,shadows:0,lights:4,tex:128,debris:24,pr:1},
-  high:{h:360,snap:1,affine:0,dither:1,shadows:1,lights:6,tex:256,debris:40,pr:1},
+  // pr = max device-pixel-ratio, msaa = render-target samples. Smooth (non-PS1) pipeline.
+  low:{pr:1,msaa:0,dither:0,shadows:0,lights:2,tex:256,debris:12},
+  med:{pr:1.5,msaa:4,dither:0,shadows:0,lights:4,tex:256,debris:24},
+  high:{pr:2,msaa:4,dither:0,shadows:1,lights:6,tex:256,debris:40},
 };
-export const G={tier:'med',T:TIERS.med,snapOn:true,affineOn:true,uniforms:{uSnap:{value:new THREE.Vector2(160,120)},uSnapOn:{value:1}}};
+export const G={tier:'med',T:TIERS.med,snapOn:false,affineOn:false,aniso:4,uniforms:{uSnap:{value:new THREE.Vector2(160,120)},uSnapOn:{value:1}}};
 
 export function pickTier(){
   const q=new URLSearchParams(location.search).get('q');
@@ -39,8 +40,10 @@ export class Renderer{
   constructor(canvas){
     this.canvas=canvas;
     this.r=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
-    this.r.setPixelRatio(1); this.r.outputColorSpace=THREE.SRGBColorSpace;
-    this.rt=new THREE.WebGLRenderTarget(320,240,{minFilter:THREE.NearestFilter,magFilter:THREE.NearestFilter,depthBuffer:true});
+    this.r.setPixelRatio(1); this.r.outputColorSpace=THREE.SRGBColorSpace; this.r.shadowMap.type=THREE.PCFSoftShadowMap;
+    G.aniso=Math.min(8,this.r.capabilities.getMaxAnisotropy());
+    this.rt=new THREE.WebGLRenderTarget(320,240,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:true,samples:4});
+    this.scale=1;this._ft=[];
     this.post=new THREE.ShaderMaterial({uniforms:{t:{value:this.rt.texture},res:{value:new THREE.Vector2(320,240)},dith:{value:1},
       sepia:{value:0},flash:{value:0},vig:{value:.35},noise:{value:0},time:{value:0},red:{value:0}},
       vertexShader:'varying vec2 v;void main(){v=uv;gl_Position=vec4(position.xy,0.,1.);}',
@@ -50,8 +53,8 @@ float b4(vec2 p){int x=int(mod(p.x,4.)),y=int(mod(p.y,4.));int i=x+y*4;
 float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233))+time)*43758.5453);}
 void main(){vec2 px=floor(v*res);vec3 c=pow(max(texture2D(t,v).rgb,0.),vec3(1./2.2));
  if(sepia>0.){float l=dot(c,vec3(.3,.59,.11));c=mix(c,vec3(l*1.15+.06,l*.95+.03,l*.7),sepia);}
- c+=noise*(h(px)-.5)*.25;
- float d=length(v-.5);c*=1.-vig*d*d*2.2;
+ c+=noise*(h(px)-.5)*.06;
+ float d=length(v-.5);c*=1.-vig*d*d*1.4;
  c=mix(c,vec3(.55,0.,0.),red*(.3+d));
  c+=flash;
  if(dith>0.){c+=b4(px)/31.;c=floor(c*31.+.5)/31.;}
@@ -66,12 +69,15 @@ void main(){vec2 px=floor(v*res);vec3 c=pow(max(texture2D(t,v).rgb,0.),vec3(1./2
   resize(){
     const w=innerWidth,h=innerHeight; this.r.setSize(w,h,false);
     this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px';
-    const ih=G.T.h, iw=Math.round(ih*w/h);
-    this.rt.setSize(iw,ih); this.post.uniforms.res.value.set(iw,ih);
+    const pr=Math.min(devicePixelRatio||1,G.T.pr)*this.scale, iw=Math.round(w*pr), ih=Math.round(h*pr);
+    this.rt.samples=G.T.msaa; this.rt.setSize(iw,ih); this.post.uniforms.res.value.set(iw,ih);
     G.uniforms.uSnap.value.set(iw/2,ih/2); this.aspect=w/h;
     if(this.cam){this.cam.aspect=this.aspect;this.cam.updateProjectionMatrix();}
   }
-  render(scene,cam,t){
+  // adaptive quality: if frames average >36ms (~<28fps) for 2s, drop render scale (down to 0.6x)
+  perf(now){const f=this._ft;if(this._last)f.push(now-this._last);this._last=now;if(f.length>=60){const a=f.reduce((x,y)=>x+y)/f.length;f.length=0;
+    if(a>36&&this.scale>.6){this.scale=Math.max(.6,this.scale-.15);this.resize();}}}
+  render(scene,cam,t){this.perf(performance.now());
     this.cam=cam; if(cam.aspect!==this.aspect){cam.aspect=this.aspect;cam.updateProjectionMatrix();}
     G.uniforms.uSnapOn.value=G.snapOn?1:0;
     this.post.uniforms.time.value=t%10; this.post.uniforms.dith.value=G.T.dither;
@@ -87,7 +93,7 @@ const AITEX=new Set(['wallpaper','brick','ceiling','tile','wood','stone','carpet
 const _tl=new THREE.TextureLoader();
 export function tex(kind,tint){
   const key=kind+(tint||''); if(texCache[key])return texCache[key];
-  if(AITEX.has(kind)){const t=_tl.load('assets/tex/'+kind+'.jpg');t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestMipmapLinearFilter;t.colorSpace=THREE.SRGBColorSpace;return texCache[key]=t;}
+  if(AITEX.has(kind)){const t=_tl.load('assets/tex/'+kind+'.jpg');t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.anisotropy=G.aniso;t.colorSpace=THREE.SRGBColorSpace;return texCache[key]=t;}
   const S=G.T.tex, c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d'); const R=rng(kind.length*977+S);
   const f=(col)=>{g.fillStyle=col;}; const n=(a)=>{const d=g.getImageData(0,0,S,S);for(let i=0;i<d.data.length;i+=4){const v=(R()-.5)*a;d.data[i]+=v;d.data[i+1]+=v;d.data[i+2]+=v;}g.putImageData(d,0,0);};
   const u=S/128;
@@ -120,7 +126,14 @@ export function tex(kind,tint){
   };
   (K[kind]||K.concrete)();
   if(tint){g.globalCompositeOperation='multiply';f(tint);g.fillRect(0,0,S,S);g.globalCompositeOperation='source-over';}
-  const t=new THREE.CanvasTexture(c); t.magFilter=t.minFilter=THREE.NearestFilter; t.generateMipmaps=false;
+  const t=new THREE.CanvasTexture(c); t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.anisotropy=G.aniso;
   t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace; texCache[key]=t; return t;
 }
 export function clearTex(){for(const k in texCache){texCache[k].dispose();delete texCache[k];}}
+
+// Smooth texture filtering for loaded maps.
+export function smoothTex(t){if(!t)return t;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=G.aniso;t.needsUpdate=true;return t;}
+// Smooth vertex normals across split vertices (position-welded), keeps UV seams.
+export function smoothNormals(geo){const P=geo.attributes.position;geo.computeVertexNormals();const N=geo.attributes.normal,acc=new Map(),k=i=>`${P.getX(i).toFixed(4)},${P.getY(i).toFixed(4)},${P.getZ(i).toFixed(4)}`;
+  for(let i=0;i<P.count;i++){const key=k(i);let a=acc.get(key);if(!a)acc.set(key,a=[0,0,0]);a[0]+=N.getX(i);a[1]+=N.getY(i);a[2]+=N.getZ(i);}
+  for(let i=0;i<P.count;i++){const a=acc.get(k(i)),l=Math.hypot(...a)||1;N.setXYZ(i,a[0]/l,a[1]/l,a[2]/l);}N.needsUpdate=true;return geo;}

@@ -5,7 +5,7 @@
 @font-face{font-family:LQ;src:url(fonts/chakra-petch-vietnamese-700-normal.woff2) format('woff2');font-weight:700;unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+1EA0-1EF9,U+20AB}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none;font-family:LQ,system-ui,sans-serif;color:#e8e2d4}
-#gl{position:fixed;inset:0;image-rendering:pixelated;image-rendering:crisp-edges}
+#gl{position:fixed;inset:0}
 #ui{position:fixed;inset:0;pointer-events:none}
 #ui>*{pointer-events:auto}
 #ui>.fade,#ui>.lb,#ui>.prompt,#ui>.toast,#ui>.boss,#ui>.hud{pointer-events:none}
@@ -32,7 +32,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;touch-action:none
 .prompt{position:absolute;left:50%;bottom:40%;transform:translateX(-50%);font-size:14px;letter-spacing:.15em;background:#000a;padding:6px 12px;border:1px solid #ffffff30;pointer-events:none;white-space:nowrap}
 .dlg{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 12px);min-height:120px;background:linear-gradient(#0a0c14ee,#05060aee);border:1px solid #8a8aa055;border-top:2px solid #c8b88a88;padding:12px 14px 14px 112px;font-size:17px;line-height:1.4}
 .dlg.noport{padding-left:14px}
-.dlg canvas{position:absolute;left:10px;top:10px;width:92px;height:92px;image-rendering:pixelated;border:1px solid #ffffff40}
+.dlg canvas{position:absolute;left:10px;top:10px;width:92px;height:92px;border:1px solid #ffffff40}
 .dlg .nm{font-size:12px;letter-spacing:.25em;color:#c8b88a;margin-bottom:4px;font-weight:700}
 .dlg .more{position:absolute;right:12px;bottom:6px;font-size:12px;opacity:.6;animation:bl 1s infinite}
 @keyframes bl{50%{opacity:.1}}

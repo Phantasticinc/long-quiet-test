@@ -46,7 +46,7 @@ function silhouette(v,rnd){const g=new THREE.Group(),hor=C(v.hor),dark=C(v.top).
   return g;}
 function windowsTex(rnd){const cv=document.createElement('canvas');cv.width=cv.height=64;const x=cv.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,64,64);
   for(let i=0;i<8;i++)for(let j=0;j<16;j++)if(rnd()<.18){x.fillStyle=rnd()<.7?'#ffcc70':'#a0d0ff';x.fillRect(i*8+2,j*4+1,4,2);}
-  const t=new THREE.CanvasTexture(cv);t.magFilter=t.minFilter=THREE.NearestFilter;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
+  const t=new THREE.CanvasTexture(cv);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.wrapS=t.wrapT=THREE.RepeatWrapping;return t;}
 function skyline(R,rnd,col,dens){const g=new THREE.Group(),wt=windowsTex(rnd);const n=(120*dens)|0;
   for(let i=0;i<n;i++){const a=rnd()*Math.PI*2;if(Math.sin(a)>.2&&dens<1)continue;const h=2+rnd()*rnd()*14,w=1+rnd()*2.2;
     const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),new THREE.MeshBasicMaterial({color:col,map:wt,fog:false}));
@@ -97,13 +97,13 @@ export function applyScenic(scene,ch,room,rd,tier,hemi){
     if(v.pano){ // AI-painted panorama on a cylinder (no procedural sky/silhouette)
       const pt=new THREE.TextureLoader().load(v.pano);pt.colorSpace=THREE.SRGBColorSpace;pt.wrapS=THREE.RepeatWrapping;
       const cyl=add(new THREE.Mesh(new THREE.CylinderGeometry(40,40,40,32,1,true),new THREE.MeshBasicMaterial({map:pt,side:THREE.BackSide,fog:false,depthWrite:false})));cyl.position.y=12;cyl.renderOrder=-1;
-      if(v.ground){const gt=tex(v.ground).clone();gt.needsUpdate=true;gt.repeat.set(20,20);const gr=add(new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshLambertMaterial({map:gt})));gr.rotation.x=-Math.PI/2;gr.position.y=.005;room.group.children.forEach(o=>{if(o.isMesh&&o.geometry.type==='PlaneGeometry'&&Math.abs(o.rotation.x+Math.PI/2)<.01)o.visible=false;});scene.fog.density=.018;}
+      if(v.ground){const gt=tex(v.ground).clone();gt.needsUpdate=true;gt.repeat.set(20,20);const gr=add(new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshLambertMaterial({map:gt})));gr.rotation.x=-Math.PI/2;gr.position.y=.005;room.group.children.forEach(o=>{if(o.isMesh&&o.geometry.type==='PlaneGeometry'&&Math.abs(o.rotation.x+Math.PI/2)<.01)o.visible=false;if(o.isMesh&&o.geometry.type==='BoxGeometry'&&o.geometry.parameters.height<1.5&&o.geometry.parameters.height>.5){o.material=new THREE.MeshLambertMaterial({map:tex('stone'),color:'#d8ccb8'});}});scene.fog.density=.018;}
     }else{
     const dome=add(skyDome(v));ups.push((dt,t)=>{dome.material.uniforms.t.value=t;});
     const sil=add(silhouette(v,rnd));ups.push((dt,t)=>sil.traverse(o=>{if(o.userData.blink!==undefined)o.visible=Math.sin(t*2+o.userData.blink)>.3;}));}
     if(v.water){const w=add(water(v));ups.push((dt,t)=>{w.material.uniforms.t.value=t;});if(room.group.userData.water)room.group.userData.water.visible=false;}
     if(v.lanterns){const L=add(lanterns(rnd,tier));ups.push((dt,t)=>L.children.forEach(l=>{l.position.y=-.42+Math.sin(t*1.2+l.userData.ph)*.04;l.position.x+=Math.sin(t*.2+l.userData.ph)*dt*.05;}));}
-    for(const [n,x,z,sc,y] of v.props||[]){const o=prop(n);if(!o)continue;o.traverse(m=>{if(m.isMesh){const mp=m.material.map;m.material=new THREE.MeshBasicMaterial({map:mp,fog:true});if(mp){mp.magFilter=THREE.NearestFilter;}}});
+    for(const [n,x,z,sc,y] of v.props||[]){const o=prop(n);if(!o)continue;o.traverse(m=>{if(m.isMesh){const mp=m.material.map;m.material=new THREE.MeshBasicMaterial({map:mp,fog:true});if(mp){mp.magFilter=THREE.LinearFilter;}}});
       o.position.set(x,y||0,z);o.scale.setScalar(sc);o.rotation.y=(x*7+z*3)%6.28;scene.add(o);if(n==='lantern')ups.push((dt,t)=>{o.rotation.z=Math.sin(t*1.3+x)*.08;});}
     const sun=new THREE.DirectionalLight(v.sun,v.moon?.5:1.3);sun.position.set(...v.sd).multiplyScalar(20);add(sun);
     if(hemi){hemi.color.set(v.mid);hemi.groundColor.set(C(v.hor).multiplyScalar(.4));hemi.intensity=v.moon?.7:1.0;}
