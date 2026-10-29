@@ -1,5 +1,5 @@
 // Synthesized score + SFX. WebAudio: pads, strings, piano, bass, drums, choir.
-// Adaptive layers (calm/tension/combat/safe/boss), heartbeat, 3D positional SFX, per-city ambience.
+// Adaptive layers (pre-rendered loops: calm/tension/combat/safe/boss/memory), heartbeat, 3D positional SFX, per-city ambience.
 export const A={ctx:null,on:true,vol:.8,layers:{},intensity:0,mode:'calm'};
 let C,M,MUS,SFX,AMB,REV,noiseBuf;
 const KEYS=[57,50,52,45,53,55,48,40]; // root midi per chapter (A, D, E, A, F, G, C, E-low)
@@ -22,15 +22,23 @@ export function initAudio(){
   for(let i=0;i<nd.length;i++){const w=Math.random()*2-1;b0=.99765*b0+w*.099046;b1=.963*b1+w*.2965164;b2=.57*b2+w*1.0526913;nd[i]=b0+b1+b2+w*.1848;pk=Math.max(pk,Math.abs(nd[i]));}
   for(let i=0;i<nd.length;i++)nd[i]/=pk;const xf=Math.floor(C.sampleRate*.05);for(let i=0;i<xf;i++){const a=i/xf;nd[i]=nd[i]*a+nd[nd.length-xf+i]*(1-a);} // seamless loop
   for(const k of['calm','tension','combat','safe','boss','memory'])A.layers[k]=mk(k);
-  setInterval(tick,50);
+  loadMusic();
 }
-function mk(name){const g=C.createGain();g.gain.value=0;g.connect(MUS);const s=C.createGain();s.gain.value=.35;g.connect(s);s.connect(REV);return g;}
+function mk(name){const g=C.createGain();g.gain.value=0;g.connect(MUS);return g;}
+// Score = pre-rendered, band-limited loops (tools/audio/render_music.py), one per layer, all started together so
+// layers stay in sync; modes crossfade layer gains. Files carry 0.25s circular pads; loop region is [PAD, PAD+len].
+const MLEN={calm:28.2353,safe:28.2353,memory:28.2353,tension:16.2712,combat:16.2712,boss:16.2712},PAD=.25;let msrc=[];
+const keyRate=()=>{let d=(KEYS[ch%8]-52)%12;if(d>6)d-=12;if(d<-6)d+=12;return Math.pow(2,d/12);};
+async function loadMusic(){const ext=new Audio().canPlayType('audio/ogg; codecs="vorbis"')?'ogg':'m4a';
+  try{const bufs=await Promise.all(Object.keys(MLEN).map(async k=>[k,await new Promise((res,rej)=>fetch(`assets/music/${k}.${ext}`).then(r=>r.arrayBuffer()).then(ab=>C.decodeAudioData(ab,res,rej)).catch(rej))]));
+    const t0=C.currentTime+.1;for(const [k,b] of bufs){const s=C.createBufferSource();s.buffer=b;s.loop=true;s.loopStart=PAD;s.loopEnd=PAD+MLEN[k];s.playbackRate.value=keyRate();s.connect(A.layers[k]);s.start(t0,PAD);msrc.push(s);}
+  }catch(e){console.warn('music',e);}}
 function env(g,t,a,d,s,r,peak=1,len=1){g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.setTargetAtTime(peak*s,t+a,d);g.gain.setTargetAtTime(0,t+len,r);}
 // --- instruments ---
-function pad(out,m,t,len,vel=.12,bright=900){for(const det of[-7,7,0]){const o=C.createOscillator();o.type=det?'sawtooth':'triangle';o.frequency.value=mtof(m);o.detune.value=det;
+function pad(out,m,t,len,vel=.12,bright=900){for(const det of[-7,7,0]){const o=C.createOscillator();o.type='triangle';o.frequency.value=mtof(m);o.detune.value=det;
   const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=bright;f.Q.value=.7;const g=C.createGain();env(g,t,len*.35,1,.8,.6,vel/2,len);
   o.connect(f);f.connect(g);g.connect(out);o.start(t);o.stop(t+len+3);}}
-function strings(out,m,t,len,vel=.08,trem=0){const o=C.createOscillator();o.type='sawtooth';o.frequency.value=mtof(m);
+function strings(out,m,t,len,vel=.08,trem=0){const o=C.createOscillator();o.type='triangle';o.frequency.value=mtof(m);
   const l=C.createOscillator();l.frequency.value=trem||5.2;const lg=C.createGain();lg.gain.value=trem?0:6;l.connect(lg);lg.connect(o.detune);
   const f=C.createBiquadFilter();f.type='lowpass';f.frequency.value=1800;const g=C.createGain();env(g,t,trem?.05:.4,1,.9,.4,vel,len);
   if(trem){const tg=C.createGain();tg.gain.value=.5;const tl=C.createOscillator();tl.frequency.value=trem;const tll=C.createGain();tll.gain.value=.5;tl.connect(tll);tll.connect(tg.gain);o.connect(f);f.connect(tg);tg.connect(g);tl.start(t);tl.stop(t+len+2);}
@@ -48,35 +56,10 @@ function hat(out,t,v=.08){noise(out,t,.05,'highpass',7000,v);}
 function choir(out,m,t,len,vel=.06){for(const f0 of[1,1.005,.995]){const o=C.createOscillator();o.type='sawtooth';o.frequency.value=mtof(m)*f0;
   const f1=C.createBiquadFilter();f1.type='bandpass';f1.frequency.value=700;f1.Q.value=4;const f2=C.createBiquadFilter();f2.type='bandpass';f2.frequency.value=1150;f2.Q.value=5;
   const g=C.createGain();env(g,t,len*.4,1,.9,.6,vel,len);o.connect(f1);o.connect(f2);f1.connect(g);f2.connect(g);g.connect(out);o.start(t);o.stop(t+len+3);}}
-// --- sequencer ---
-let next=0,step=0,ch=0;
-const PROG=[[0,-4,-2,-5],[0,3,-4,-2],[0,-2,-4,-5]]; // minor-ish progressions (semitone offsets of chord root)
+let ch=0;
+const PROG=[[0,-4,-2,-5],[0,3,-4,-2],[0,-2,-4,-5]];
 function chord(r,minor=true){return[r,r+(minor?3:4),r+7,r+12];}
-function tick(){
-  if(!C||!A.on)return; const now=C.currentTime; if(next<now)next=now+.05;
-  const bpm=A.mode==='combat'||A.mode==='boss'?118:A.mode==='tension'?84:68,sd=60/bpm/4;
-  while(next<now+.25){sched(step,next,sd);next+=sd;step++;}
-}
-function sched(s,t,sd){
-  const root=KEYS[ch%8],bar=Math.floor(s/16),beat=s%16,P=PROG[ch%3],cr=root+P[bar%4],L=A.layers;
-  const safe=A.mode==='safe',on=k=>((A.tg||{})[k]||0)>0||(A.layers[k].gain.value>.02);
-  if(beat===0){if(on('calm'))pad(L.calm,cr-12,t,sd*16,.1,700);if(on('safe'))chord(cr,!safe).forEach(n=>pad(L.safe,n,t,sd*16,.05,1200));}
-  if(on('calm')){if(beat%4===0&&Math.random()<.55){const sc=[0,3,5,7,10,12,15];piano(L.calm,root+12+sc[(s*7+bar)%sc.length],t,.08+Math.random()*.06);}}
-  if(on('safe')){if(safe&&beat%2===0){const sc=[0,4,7,12,16];piano(L.safe,cr+12+sc[(s/2+bar)%5|0],t,.09);}}
-  if(on('tension')){if(beat===0)strings(L.tension,cr,t,sd*16,.05,0);}
-  if(on('tension')){if(beat%8===0)strings(L.tension,cr+(beat?13:12),t,sd*8,.03,9);}
-  if(on('tension')){if(beat%2===0)bass(L.tension,cr-24,t,sd,.12);}
-  // combat drums + ostinato
-  if(on('combat')){if(beat%4===0)kick(L.combat,t,.6);if(beat===4||beat===12)snare(L.combat,t,.3);if(beat%2===1)hat(L.combat,t,.05);}
-  if(on('combat')){bass(L.combat,cr-24+(beat%3===0?0:beat%3===1?7:12),t,sd*.9,.14);}
-  if(on('combat')){if(beat%4===2)strings(L.combat,cr+12+(beat%8?3:0),t,sd*2,.04,0);}
-  // boss: choir + timpani-ish
-  if(on('boss')){if(beat===0)chord(cr,true).slice(0,3).forEach(n=>choir(L.boss,n,t,sd*16,.05));}
-  if(on('boss')){if(beat%4===0)kick(L.boss,t,.9);if(beat===14||beat===15)snare(L.boss,t,.25);}
-  // memory: music box
-  if(on('memory')){if(beat%2===0){const sc=[0,4,7,11,12,7,4,2];piano(L.memory,root+24+sc[(s/2)%8|0],t,.06);}}
-}
-export function setChapter(i){ch=i;}
+export function setChapter(i){ch=i;if(C)for(const s of msrc)s.playbackRate.setValueAtTime(keyRate(),C.currentTime);}
 export function setMode(mode){A.mode=mode;if(!C)return;const t=C.currentTime;
   const tg={calm:{calm:1},tension:{calm:.5,tension:1},combat:{tension:.6,combat:1},safe:{safe:1},boss:{combat:1,boss:1,tension:.4},memory:{memory:1},silence:{}}[mode]||{};
   A.tg=tg;for(const k in A.layers)A.layers[k].gain.setTargetAtTime(tg[k]||0,t,mode==='silence'?.3:1.2);}
@@ -93,7 +76,7 @@ export function sting(kind){if(!C)return;const t=C.currentTime+.02,o=SFX;
 // --- SFX (3D) ---
 export function listener(cam){if(!C)return;const L=C.listener,p=cam.position,f=new cam.position.constructor(0,0,-1).applyQuaternion(cam.quaternion);
   if(L.positionX){L.positionX.value=p.x;L.positionY.value=p.y;L.positionZ.value=p.z;L.forwardX.value=f.x;L.forwardY.value=f.y;L.forwardZ.value=f.z;L.upX.value=0;L.upY.value=1;L.upZ.value=0;}else{L.setPosition(p.x,p.y,p.z);L.setOrientation(f.x,f.y,f.z,0,1,0);}}
-function out3(pos){if(!pos)return SFX;const p=C.createPanner();p.panningModel='HRTF';p.distanceModel='inverse';p.refDistance=2;p.rolloffFactor=1.2;p.positionX.value=pos.x;p.positionY.value=pos.y||1;p.positionZ.value=pos.z;p.connect(SFX);return p;}
+function out3(pos){if(!pos)return SFX;const p=C.createPanner();p.panningModel='equalpower';p.distanceModel='inverse';p.refDistance=2;p.rolloffFactor=1.2;p.positionX.value=pos.x;p.positionY.value=pos.y||1;p.positionZ.value=pos.z;p.connect(SFX);return p;}
 export function sfx(name,pos,v=1){if(!C||!A.on)return;const t=C.currentTime,o=out3(pos);
   switch(name){
    case 'shot':noise(o,t,.25,'lowpass',1800,.6*v);kick(o,t,.5*v);noise(REV,t,.4,'bandpass',900,.15*v);break;

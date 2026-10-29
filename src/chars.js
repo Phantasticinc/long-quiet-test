@@ -184,9 +184,15 @@ export const GLB={map:new Map()};
 export const ART=new Map();
 const ZART={walker:'walker',crawler:'walker',runner:'screamer',bloater:'bloater',screamer:'screamer'};
 export function artKey(d){return d.art||(d.zombie&&!d.art&&d.art!==null?ZART[d.ztype]:null)||null;}
+// Blends the front/back projection (uv) with the side projection (uv1) by per-vertex weight (uv2.x).
+function artMat(map,g){const m=new THREE.MeshLambertMaterial({map});
+  if(!g.attributes.uv1||!g.attributes.uv2)return m;g.setAttribute('aSide',g.attributes.uv1);g.setAttribute('aW',g.attributes.uv2);
+  m.onBeforeCompile=sh=>{sh.vertexShader='attribute vec2 aSide;attribute vec2 aW;varying vec2 vSide;varying float vW;\n'+sh.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\nvSide=aSide;vW=aW.x;');
+    sh.fragmentShader='varying vec2 vSide;varying float vW;\n'+sh.fragmentShader.replace('#include <map_fragment>','vec4 tA=texture2D(map,vMapUv),tB=texture2D(map,vec2(vSide.x,vMapUv.y));diffuseColor*=mix(tA,tB,vW);');};
+  m.customProgramCacheKey=()=>'artblend';return m;}
 function buildArt(d,a){const bd=d.build||{},J=a.joints;
   const g=a.geo.clone();const map=a.jn.map(n=>Math.max(0,B.indexOf(n)));const si=g.attributes.skinIndex;for(let i=0;i<si.array.length;i++)si.array[i]=map[si.array[i]];
-  const mat=psx(new THREE.MeshLambertMaterial({map:a.map}));
+  const mat=artMat(a.map,g);
   const bones=B.map(n=>{const b=new THREE.Bone();b.name=n;return b;});
   B.forEach((n,i)=>{const j=J[n];if(PARENT[n]){const pj=J[PARENT[n]];bones[i].position.set(j[0]-pj[0],j[1]-pj[1],j[2]-pj[2]);bones[BI[PARENT[n]]].add(bones[i]);}else bones[i].position.set(...j);});
   const m=new THREE.SkinnedMesh(g,mat);m.add(bones[0]);m.bind(new THREE.Skeleton(bones));m.castShadow=true;m.frustumCulled=false;m.userData.tris=(g.index?g.index.count:g.attributes.position.count)/3;m.userData.art=1;
